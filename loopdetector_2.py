@@ -1,65 +1,45 @@
-import requests
 import librosa
 import numpy as np
-import scipy.signal as signal
 import matplotlib.pyplot as plt
-import io
-import time
 
-# Функция для вычисления автокорреляции
-def autocorrelation(x):
-    result = np.correlate(x, x, mode='full')
-    return result[result.size // 2:]
+# Caricamento del file audio
+file_path = "downloaded_audio_30s.mp3"
+y, sr = librosa.load(file_path, sr=None)
 
-# Функция для обработки аудио потока
-def process_audio_stream(url, segment_duration=10):
-    try:
-        print("Попытка подключения к потоку...")
-        audio_stream = requests.get(url, stream=True)
-        print("Подключение установлено")
+# Funzione per calcolare la somiglianza tra due frammenti audio
+def similarity_check(segment1, segment2):
+    # Utilizziamo la correlazione incrociata per confrontare i frammenti
+    return np.corrcoef(segment1, segment2)[0, 1]
 
-        audio_data = b""
-        chunk_size = 2048  # Увеличили размер чанка
-        sample_rate = 22050
+# Suddivisione del file audio in piccoli frammenti (ad esempio, 1 secondo)
+segment_length = sr  # 1 secondo
+segments = [y[i:i+segment_length] for i in range(0, len(y), segment_length)]
 
-        while True:
-            chunk = audio_stream.iter_content(chunk_size=chunk_size)
-            audio_data += next(chunk)
+# Se l'ultimo frammento è più corto degli altri, lo completiamo con zeri
+if len(segments[-1]) < segment_length:
+    segments[-1] = np.pad(segments[-1], (0, segment_length - len(segments[-1])), 'constant')
 
-            try:
-                y, sr = librosa.load(io.BytesIO(audio_data), sr=sample_rate)
-                print(f"Загружено {len(y)} сэмплов для анализа.")
+# Cerchiamo i loop nel file audio
+loop_threshold = 0.90  # Soglia di somiglianza
+min_loop_duration = 10  # Durata minima del loop in secondi
 
-                # Нормализация аудио сигнала
-                y = librosa.util.normalize(y)
+loop_found = []
 
-                segment_samples = segment_duration * sr
-                for i in range(0, len(y), segment_samples):
-                    segment = y[i:i + segment_samples]
+for i in range(len(segments)):
+    for j in range(i + 1, len(segments)):
+        similarity = similarity_check(segments[i], segments[j])
+        
+        if similarity > loop_threshold:
+            # Verifichiamo che la durata del loop sia almeno di 10 secondi
+            loop_duration = (j - i)  # in secondi
+            if loop_duration >= min_loop_duration:
+                loop_found.append((i, j, similarity))
 
-                    if len(segment) < segment_samples:
-                        break
-
-                    print(f"Проверка лупа на сегменте с {i / sr} секунд")
-                    auto_corr = autocorrelation(segment)
-
-                    # Поиск пиков в автокорреляции с улучшенными параметрами
-                    peaks, _ = signal.find_peaks(auto_corr, height=0.1, distance=1000)
-                    if len(peaks) > 1:
-                        print(f"Луп найден на {i / sr} секунд.")
-                    else:
-                        print(f"Лупа нет на {i / sr} секунд.")
-
-                    time.sleep(10)
-
-            except Exception as e:
-                print(f"Ошибка при обработке потока: {e}")
-
-    except requests.exceptions.RequestException as e:
-        print(f"Ошибка подключения к потоку: {e}")
-    except Exception as e:
-        print(f"Произошла ошибка: {e}")
-
-# Пример использования
-url = "http://audio1.meway.tv:8099/live"
-process_audio_stream(url)
+# Mostriamo il risultato
+if loop_found:
+    for loop in loop_found:
+        start_time = loop[0] * segment_length / sr
+        end_time = loop[1] * segment_length / sr
+        print(f"Loop trovato da {start_time:.2f}s a {end_time:.2f}s con somiglianza {loop[2]:.2f}")
+else:
+    print("Nessun loop trovato.")

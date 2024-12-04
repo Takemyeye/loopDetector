@@ -2,7 +2,6 @@ import librosa
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Caricamento del file audio
 file_path = "downloaded_audio_30s.mp3"
 y, sr = librosa.load(file_path, sr=None)
 
@@ -12,7 +11,7 @@ def similarity_check(segment1, segment2):
     return np.corrcoef(segment1, segment2)[0, 1]
 
 # Suddivisione del file audio in piccoli frammenti (ad esempio, 1 secondo)
-segment_length = sr  # 1 secondo
+segment_length = sr
 segments = [y[i:i+segment_length] for i in range(0, len(y), segment_length)]
 
 # Se l'ultimo frammento è più corto degli altri, lo completiamo con zeri

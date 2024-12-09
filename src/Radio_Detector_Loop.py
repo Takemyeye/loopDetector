@@ -4,14 +4,14 @@ import numpy as np
 import soundfile as sf
 import os
 
-# URL dell'audio
 url = "http://audio1.meway.tv:8099/live"
 output_file = "downloaded_audio_20s.mp3"
-loop_directory = "loops"  # Cartella per salvare i loop
+#loop_directory = "loops"
 
 # Creazione della cartella per i loop, se non esiste
-if not os.path.exists(loop_directory):
-    os.makedirs(loop_directory)
+
+#if not os.path.exists(loop_directory):
+#    os.makedirs(loop_directory)
 
 # Funzione per scaricare 20 secondi di audio
 def scarica_segmento_audio(url, output_file):
@@ -57,14 +57,14 @@ def analizza_audio_per_loop(file_path):
         return [], None, None
 
 # Funzione per salvare i loop trovati
-def salva_loop(y, sr, start_frame, end_frame, index):
-    try:
-        loop_audio = y[start_frame:end_frame]
-        loop_filename = os.path.join(loop_directory, f"loop_{index}.wav")
-        sf.write(loop_filename, loop_audio, sr)  # Utilizza soundfile per salvare il file
-        print(f"Loop salvato: {loop_filename}")
-    except Exception as e:
-        print(f"Errore durante il salvataggio del loop: {e}")
+#def salva_loop(y, sr, start_frame, end_frame, index):
+#   try:
+#        loop_audio = y[start_frame:end_frame]
+#        loop_filename = os.path.join(loop_directory, f"loop_{index}.wav")
+#        sf.write(loop_filename, loop_audio, sr)  # Utilizza soundfile per salvare il file
+#        print(f"Loop salvato: {loop_filename}")
+#    except Exception as e:
+#        print(f"Errore durante il salvataggio del loop: {e}")
 
 # Ciclo infinito principale
 last_loop_active = False
@@ -90,8 +90,8 @@ try:
                     print(f"Loop: {tempo_inizio / sr:.2f}s - {tempo_fine / sr:.2f}s (similarità: {similarita:.2f})")
                     
                     # Salviamo il loop corrente
-                    salva_loop(y, sr, int(tempo_inizio), int(tempo_fine), loop_index)
-                    loop_index += 1
+                    #salva_loop(y, sr, int(tempo_inizio), int(tempo_fine), loop_index)
+                    #loop_index += 1
                 
                 # Salviamo l'ultimo intervallo temporale
                 last_loop_time = loops[-1][1] * sr

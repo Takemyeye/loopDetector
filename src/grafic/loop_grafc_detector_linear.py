@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import librosa.display
 
-file_path = "downloaded_audio_40s_1.mp3"
+file_path = "audio_1.mp3"
 y, sr = librosa.load(file_path, sr=None)
 
 # Funzione per calcolare la somiglianza tra due frammenti audio

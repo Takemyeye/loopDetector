@@ -8,13 +8,6 @@ import librosa
 import time
 import os
 
-# Elenco degli URL delle sorgenti audio
-urls = [
-    "http://audio1.meway.tv:8099/live",
-    "http://audio1.meway.tv:8101/stream",
-    "https://ssl.audio1.meway.tv/proxy/radioliscio?mp=/stream"
-]
-
 # Directory principale per i file audio e i loop
 output_directory = "downloads"
 loop_base_directory = "loops"
@@ -148,11 +141,21 @@ def receive_data():
 
 # Avvio dell'analisi e del server Flask
 if __name__ == "__main__":
-    for idx, url in enumerate(urls):
-        threading.Thread(target=analyze_and_send, args=(url, idx), daemon=True).start()
-    porta = 3002
-    print(f"Server Flask avviato sulla porta {porta}. Premere Ctrl+C per uscire.")
     try:
+        # Fai richiesta per ottenere gli URL dal server Node.js
+        response = requests.get("http://localhost:3001/api/streams")
+        urls = response.json().get('streams', [])
+        print("URL ricevuti dal server:", urls)
+
+        # Avvia i thread per ogni URL ricevuto
+        for idx, url in enumerate(urls):
+            threading.Thread(target=analyze_and_send, args=(url, idx), daemon=True).start()
+
+        # Avvia il server Flask
+        porta = 3002
+        print(f"Server Flask avviato sulla porta {porta}. Premere Ctrl+C per uscire.")
         app.run(port=porta)
     except KeyboardInterrupt:
         print("Server arrestato.")
+    except Exception as e:
+        print(f"Errore durante l'avvio del server: {e}")

@@ -65,7 +65,7 @@ def ricevi_dati():
 # Avvio del server e analisi
 if __name__ == "__main__":
     try:
-        response = requests.get("http://localhost:3001/api/streams")
+        response = requests.get("http://localhost:3004/api/streams")
         urls = response.json().get('streams', [])
         print("URL ricevuti dal server:", urls)
 

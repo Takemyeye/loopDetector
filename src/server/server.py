@@ -4,7 +4,6 @@ import requests
 import time
 import os
 import logging
-import psutil
 
 from downloader import scarica_segmento_audio
 from analyzer import analizza_audio_per_loop
@@ -17,7 +16,7 @@ output_directory = "downloads"
 post_url = "http://localhost:3004/api/messages"
 os.makedirs(output_directory, exist_ok=True)
 
-# Memorizziamo lo stato dei flussi
+# Memorizziamo lo stato dei flussi  
 streams_state = {}
 
 # Funzione per analizzare e inviare i dati
@@ -89,7 +88,7 @@ def verifica_streams_e_lup():
                         threading.Thread(target=analizza_e_invia, args=(url_obj['url'], id, idx, stop_event), daemon=True).start()
             else:
                 if status == True:
-                    # Se è un nuovo flusso con stato True, avviamo il thread
+                    # Se lo stato True avviamo il thread
                     logging.info(f"Flusso {id} nuovo e attivo, avviamo l'analisi.")
                     stop_event = threading.Event()  # Crea un nuovo evento per il thread
                     threading.Thread(target=analizza_e_invia, args=(url_obj['url'], id, idx, stop_event), daemon=True).start()
@@ -103,7 +102,7 @@ def verifica_streams_e_lup():
 def verifica_periodicamente():
     while True:
         verifica_streams_e_lup()
-        time.sleep(60)
+        time.sleep(6000)
 
 # Creazione del server Flask
 app = Flask(__name__)
@@ -116,6 +115,8 @@ def ricevi_dati():
             return jsonify({"status": "error", "message": "Formato dati non valido"}), 400
         
         logging.info(f"Dati ricevuti: {data}")
+        
+        threading.Thread(target=verifica_streams_e_lup, daemon=True).start()
         
         return jsonify({"status": "ok"})
     except Exception as e:

@@ -4,6 +4,7 @@ import requests
 import time
 import os
 import logging
+import psutil
 
 from downloader import scarica_segmento_audio
 from analyzer import analizza_audio_per_loop
@@ -16,7 +17,7 @@ output_directory = "downloads"
 post_url = "http://localhost:3004/api/messages"
 os.makedirs(output_directory, exist_ok=True)
 
-# Memorizziamo lo stato dei flussi  
+# Memorizziamo lo stato dei flussi e i thread attivi
 streams_state = {}
 
 # Funzione per analizzare e inviare i dati
@@ -71,34 +72,35 @@ def verifica_streams_e_lup():
 
         for idx, url_obj in enumerate(urls):
             id = url_obj.get('id', '')
+            url = url_obj.get('url', '')
             status = url_obj['status']
 
-            # Controllo se lo stato è cambiato
             if id in streams_state:
                 old_status, stop_event = streams_state[id]
                 if old_status != status:
-                    if status == False:
-                        # Se lo stato è cambiato a False, fermiamo il thread
-                        logging.info(f"Status cambiato a False per {id}, fermiamo il thread.")
-                        stop_event.set()  # Impostiamo l'evento per fermare il thread
-                    elif status == True:
-                        # Se lo stato è cambiato a True, avviamo il thread
-                        logging.info(f"Status cambiato a True per {id}, avviamo l'analisi.")
-                        stop_event.clear()  # Ripristiniamo l'evento per far funzionare il thread
-                        threading.Thread(target=analizza_e_invia, args=(url_obj['url'], id, idx, stop_event), daemon=True).start()
+                    if not status:
+                        # Se lo stato è cambiato a False, fermiamo immediatamente il processo
+                        logging.info(f"Status cambiato a False per {id}, terminazione immediata del processo.")
+                        stop_event.set()
+                        del streams_state[id]
+                    elif status:
+                        logging.info(f"Status cambiato a True per {id}, riavviamo l'analisi.")
+                        stop_event.clear()
+                        t = threading.Thread(target=analizza_e_invia, args=(url, id, idx, stop_event), daemon=True)
+                        t.start()
+                        streams_state[id] = (status, stop_event, t.ident)
             else:
-                if status == True:
-                    # Se lo stato True avviamo il thread
-                    logging.info(f"Flusso {id} nuovo e attivo, avviamo l'analisi.")
-                    stop_event = threading.Event()  # Crea un nuovo evento per il thread
-                    threading.Thread(target=analizza_e_invia, args=(url_obj['url'], id, idx, stop_event), daemon=True).start()
-
-            # Aggiorniamo lo stato del flusso e il suo stop_event
-            streams_state[id] = (status, stop_event)
+                if status:
+                    logging.info(f"Nuovo flusso {id} attivo, avviamo l'analisi.")
+                    stop_event = threading.Event()
+                    t = threading.Thread(target=analizza_e_invia, args=(url, id, idx, stop_event), daemon=True)
+                    t.start()
+                    streams_state[id] = (status, stop_event, t.ident)
 
     except Exception as e:
         logging.error(f"Errore durante la verifica dei flussi: {e}")
 
+# Funzione periodica per controllare i flussi
 def verifica_periodicamente():
     while True:
         verifica_streams_e_lup()

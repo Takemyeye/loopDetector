@@ -1,7 +1,7 @@
 import os
 import requests
 
-def scarica_segmento_audio(url, output_file, segment_size=320000):
+def scarica_segmento_audio(url, output_file, segment_size=360000):
     try:
         response = requests.get(url, stream=True)
         response.raise_for_status()  # Check if the request was successful

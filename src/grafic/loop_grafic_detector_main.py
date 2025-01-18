@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import librosa.display
 
-file_path = "downloaded_audio_40s.mp3"
+file_path = "audio_0.mp3"
 y, sr = librosa.load(file_path, sr=None)
 
 # Funzione per calcolare la somiglianza tra due frammenti audio
@@ -19,8 +19,8 @@ if len(segments[-1]) < segment_length:
     segments[-1] = np.pad(segments[-1], (0, segment_length - len(segments[-1])), 'constant')
 
 # Cerchiamo i loop nel file audio
-loop_threshold = 0.90  # Soglia di somiglianza
-min_loop_duration = 10  # Durata minima del loop in secondi
+loop_threshold = 0.40  # Soglia di somiglianza
+min_loop_duration = 5  # Durata minima del loop in secondi
 
 loop_found = []
 

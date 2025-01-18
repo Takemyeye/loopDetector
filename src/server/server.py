@@ -4,10 +4,10 @@ import requests
 import time
 import os
 import logging
-import psutil
 
 from downloader import scarica_segmento_audio
 from analyzer import analizza_audio_per_loop
+from date_time import date_time
 from saver import salva_loop
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,6 +19,7 @@ os.makedirs(output_directory, exist_ok=True)
 
 # Memorizziamo lo stato dei flussi e i thread attivi
 streams_state = {}
+loop_states = {}  # Stato dei loop per ogni URL
 
 # Funzione per analizzare e inviare i dati
 def analizza_e_invia(url, id, url_index, stop_event):
@@ -29,35 +30,43 @@ def analizza_e_invia(url, id, url_index, stop_event):
         while not stop_event.is_set():  # Verifica se il thread deve fermarsi
             if scarica_segmento_audio(url, output_file):
                 loops, y, sr = analizza_audio_per_loop(output_file)
-                if loops:
-                    messaggio = {"status_loop": True, "url": url, "id": id, "loops": []}
-                    for l in loops:
-                        tempo_inizio = l[0] * sr
-                        tempo_fine = l[1] * sr
-                        similarita = l[2]
-                        logging.info(f"Loop trovato su {url}: {tempo_inizio / sr:.2f}s - {tempo_fine / sr:.2f}s (similarità: {similarita:.2f})")
 
-                        salva_loop(y, sr, int(tempo_inizio), int(tempo_fine), loop_index, url)
-                        loop_index += 1
+                if loops:  # Se troviamo dei loop
+                    if not loop_states.get(url, False):  # Se il loop non è stato ancora segnalato
+                        current_date = date_time()
+                        messaggio = {"status_loop": True, "url": url, "id": id, "date_start": current_date, "loops": []}
+                        for l in loops:
+                            tempo_inizio = l[0] * sr
+                            tempo_fine = l[1] * sr
+                            similarita = l[2]
+                            logging.info(f"Loop trovato su {url}: {tempo_inizio / sr:.2f}s - {tempo_fine / sr:.2f}s (similarità: {similarita:.2f})")
 
-                        messaggio["loops"].append({
-                            "start": tempo_inizio / sr,
-                            "end": tempo_fine / sr,
-                            "similarity": similarita
-                        })
+                            salva_loop(y, sr, int(tempo_inizio), int(tempo_fine), loop_index, url)
+                            loop_index += 1
 
-                    try:
-                        response = requests.post(post_url, json=messaggio)
-                        logging.info(f"Risposta del server: {response.status_code} - {response.text}")
-                    except Exception as e:
-                        logging.error(f"Errore durante l'invio dei dati: {e}")
-                else:
-                    logging.info(f"Loop non trovato su {url}.")
-                    try:
-                        response = requests.post(post_url, json={"status_loop": False, "url": url, "id": id})
-                        logging.info(f"Risposta del server: {response.status_code} - {response.text}")
-                    except Exception as e:
-                        logging.error(f"Errore durante l'invio dei dati: {e}")
+                            messaggio["loops"].append({
+                                "start": tempo_inizio / sr,
+                                "end": tempo_fine / sr,
+                                "similarity": similarita
+                            })
+
+                        try:
+                            response = requests.post(post_url, json=messaggio)
+                            logging.info(f"Risposta del server: {response.status_code} - {response.text}")
+                            loop_states[url] = True  # Aggiorniamo lo stato del loop
+                        except Exception as e:
+                            logging.error(f"Errore durante l'invio dei dati: {e}")
+                else: 
+                    if loop_states.get(url, False):  # Se il loop era attivo, inviamo lo stato di fine
+                        try:
+                            current_date = date_time()
+                            response = requests.post(post_url, json={"status_loop": False, "url": url, "id": id, "date_end": current_date})
+                            logging.info(f"Risposta del server: {response.status_code} - {response.text}")
+                            loop_states[url] = False  # Aggiorniamo lo stato del loop
+                        except Exception as e:
+                            logging.error(f"Errore durante l'invio dei dati: {e}")
+                    else:
+                        logging.info(f"Loop non trovato su {url}.")
                 os.remove(output_file)
             time.sleep(3)
     except Exception as e:
@@ -76,7 +85,7 @@ def verifica_streams_e_lup():
             status = url_obj['status']
 
             if id in streams_state:
-                old_status, stop_event = streams_state[id]
+                old_status, stop_event, _ = streams_state[id]  # Unpack the three elements
                 if old_status != status:
                     if not status:
                         # Se lo stato è cambiato a False, fermiamo immediatamente il processo
@@ -104,7 +113,7 @@ def verifica_streams_e_lup():
 def verifica_periodicamente():
     while True:
         verifica_streams_e_lup()
-        time.sleep(6000)
+        time.sleep(3000)
 
 # Creazione del server Flask
 app = Flask(__name__)
@@ -125,7 +134,7 @@ def ricevi_dati():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # Avvio del server e analisi
-if __name__ == "__main__":
+if __name__ == "__main__":  
     try:
         threading.Thread(target=verifica_periodicamente, daemon=True).start()
 

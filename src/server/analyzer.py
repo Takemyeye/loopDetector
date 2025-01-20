@@ -5,7 +5,7 @@ import librosa
 def analizza_audio_per_loop(file_path):
     try:
         y, sr = librosa.load(file_path, sr=None)
-        segment_length = sr  # Segmenti di 1 secondo
+        segment_length = sr
         segments = [y[i:i + segment_length] for i in range(0, len(y), segment_length)]
 
         if len(segments[-1]) < segment_length:
@@ -35,7 +35,6 @@ def analizza_audio_per_loop(file_path):
         return [], None, None
 
 
-# Funzione per trovare i picchi nei segmenti
 def trova_pichi_nei_segmenti(y, sr, durata_segmento=1):
     """Taglia l'audio in segmenti e trova i picchi in ogni segmento."""
     campioni_segmento = int(sr * durata_segmento)
@@ -60,7 +59,7 @@ def analizza_audio_per_loop_2(percorso_file):
         
         # Logica per cercare loop, partendo da ogni picco
         gruppi_loop = []
-        visitato = [False] * len(picchi)  # Array per tenere traccia di quali picchi sono già stati inclusi nel loop
+        visitato = [False] * len(picchi)
         for i in range(len(picchi)):
             if visitato[i]:
                 continue
@@ -75,7 +74,7 @@ def analizza_audio_per_loop_2(percorso_file):
                 prossimo_picco = -1
                 for j in range(picco_corrente + 1, len(picchi)):
                     similarita = 1 - abs(picchi[picco_corrente] - picchi[j]) / max(picchi[picco_corrente], picchi[j])
-                    if similarita == 1.0 and (j - picco_corrente) <= 3:  # max_gap può essere configurato
+                    if similarita == 1.0 and (j - picco_corrente) <= 3:
                         prossimo_picco = j
                         break
                 if prossimo_picco != -1:
@@ -98,7 +97,7 @@ def analizza_audio_per_loop_2(percorso_file):
                 fine_picco = gruppo[-1]
                 inizio_tempo = inizio_picco / sr  # Tempo di inizio del loop in secondi
                 fine_tempo = fine_picco / sr  # Tempo di fine del loop in secondi
-                print(f"Il loop inizia con il picco {inizio_picco} ({inizio_tempo:.2f} sec.) e finisce con il picco {fine_picco} ({fine_tempo:.2f} sec.). Picchi: {gruppo}")
+                print(f"Il loop inizia con il picco {inizio_picco} e finisce con il picco {fine_picco}. Picchi: {gruppo}")
                 loop_trovati.append((inizio_picco, fine_picco, inizio_tempo, fine_tempo))
         else:
             print("Nessun loop trovato.")

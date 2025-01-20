@@ -8,39 +8,33 @@ def generate_random_color():
     return (random.random(), random.random(), random.random())
 
 def segment_audio_with_continuous_repeats(audio_file, segment_duration=2, similarity_threshold=0.95):
-    # Загружаем аудиофайл
     print(f"Загружается файл: {audio_file}")
     y, sr = librosa.load(audio_file, sr=None)
     segment_samples = int(sr * segment_duration)
     
-    # Разделяем на сегменты
     segments = [y[i:i + segment_samples] for i in range(0, len(y), segment_samples)]
     print(f"Разделено на {len(segments)} сегментов по {segment_duration} секунде.")
     
-    # Если последний сегмент короче, заполняем его нулями
     if len(segments[-1]) < segment_samples:
         segments[-1] = np.pad(segments[-1], (0, segment_samples - len(segments[-1])), 'constant')
     
-    # Вычисляем пики для каждого сегмента
     peaks = [np.max(np.abs(segment)) for segment in segments]
     print("Вычислены пики для каждого сегмента.")
     
-    # Сравниваем пики и проверяем последовательные повторения
-    continuous_repeats = []  # Список для хранения информации о лупах
-    current_repeat = []  # Текущая последовательность похожих сегментов
+    continuous_repeats = []
+    current_repeat = []
 
     for i in range(len(peaks) - 1):
         similarity = 1 - abs(peaks[i] - peaks[i + 1]) / max(peaks[i], peaks[i + 1])
         if similarity >= similarity_threshold:
-            if not current_repeat:  # Если последовательность только начинается
+            if not current_repeat: 
                 current_repeat = [i]
             current_repeat.append(i + 1)
         else:
-            if len(current_repeat) > 4:  # Если текущая последовательность достаточно длинная, сохраняем её
+            if len(current_repeat) > 4:
                 continuous_repeats.append(current_repeat)
-            current_repeat = []  # Сбрасываем текущую последовательность
+            current_repeat = []
     
-    # Добавляем последнюю последовательность, если она валидная
     if len(current_repeat) > 6:
         continuous_repeats.append(current_repeat)
     

@@ -23,7 +23,6 @@ def analizza_audio_per_loop(file_path):
                     if durata_loop >= durata_minima_loop:
                         loop_trovati.append((i, j, similarita))
 
-        # Se non sono stati trovati loop, passiamo al secondo metodo
         if not loop_trovati:
             print("Nessun loop trovato con la correlazione. Passando alla ricerca dei picchi...")
             loop_trovati, y, sr = analizza_audio_per_loop_2(file_path)
@@ -36,7 +35,6 @@ def analizza_audio_per_loop(file_path):
 
 
 def trova_pichi_nei_segmenti(y, sr, durata_segmento=1):
-    """Taglia l'audio in segmenti e trova i picchi in ogni segmento."""
     campioni_segmento = int(sr * durata_segmento)
     segmenti = [y[i:i + campioni_segmento] for i in range(0, len(y), campioni_segmento)]
     
@@ -54,7 +52,7 @@ def analizza_audio_per_loop_2(percorso_file):
     try:
         y, sr = librosa.load(percorso_file, sr=None)
         picchi, segmenti = trova_pichi_nei_segmenti(y, sr, durata_segmento=1)
-
+    
         print(f"Trovati {len(picchi)} picchi.")
         
         # Logica per cercare loop, partendo da ogni picco

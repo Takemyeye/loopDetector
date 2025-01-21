@@ -34,6 +34,7 @@ def analizza_audio_per_loop(file_path):
         return [], None, None
 
 
+# Funzione per trovare Pichi di un segmento
 def trova_pichi_nei_segmenti(y, sr, durata_segmento=1):
     campioni_segmento = int(sr * durata_segmento)
     segmenti = [y[i:i + campioni_segmento] for i in range(0, len(y), campioni_segmento)]
@@ -47,12 +48,14 @@ def trova_pichi_nei_segmenti(y, sr, durata_segmento=1):
     
     return picchi, segmenti
 
+# Secondo metodo 
+
 # Funzione per analizzare l'audio utilizzando la ricerca dei picchi
 def analizza_audio_per_loop_2(percorso_file):
     try:
         y, sr = librosa.load(percorso_file, sr=None)
         picchi, segmenti = trova_pichi_nei_segmenti(y, sr, durata_segmento=1)
-    
+
         print(f"Trovati {len(picchi)} picchi.")
         
         # Logica per cercare loop, partendo da ogni picco

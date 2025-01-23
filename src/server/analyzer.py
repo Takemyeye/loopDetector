@@ -45,6 +45,7 @@ def trova_pichi_nei_segmenti(y, sr, durata_segmento=1):
     
     # Troviamo i picchi per ogni segmento
     picchi = [np.max(np.abs(segmento)) for segmento in segmenti]
+    picchi_tempo = [np.argmax(campioni_segmento) for campioni_segmento in segmenti]
     
     return picchi, segmenti
 

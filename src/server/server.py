@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 import threading
 import requests
+import logging
 import time
 import os
-import logging
 
 from downloader import scarica_segmento_audio
 from analyzer import analizza_audio_per_loop
@@ -75,7 +75,7 @@ def analizza_e_invia(url, id, url_index, stop_event):
 # Funzione per verificare e gestire i flussi attivi
 def verifica_streams_e_lup():
     try:
-        response = requests.get("http://localhost:3004/api/streams")
+        response = requests.get('http://localhost:3004/api/streams')
         urls = response.json().get('streams', [])
         logging.info(f"URL ricevuti dal server: {urls}")
 
@@ -113,7 +113,7 @@ def verifica_streams_e_lup():
 def verifica_periodicamente():
     while True:
         verifica_streams_e_lup()
-        time.sleep(3000)
+        time.sleep(300)  # 5 minuti (300 secondi)
 
 # Creazione del server Flask
 app = Flask(__name__)
@@ -126,9 +126,34 @@ def ricevi_dati():
             return jsonify({"status": "error", "message": "Formato dati non valido"}), 400
         
         logging.info(f"Dati ricevuti: {data}")
+
+        # Controlliamo lo stato del flusso ricevuto
+        id = data['id']
+        status = data['status']
         
-        threading.Thread(target=verifica_streams_e_lup, daemon=True).start()
+        # Se il flusso è disattivato (False) e abbiamo un thread attivo, fermiamo il thread
+        if id in streams_state:
+            old_status, stop_event, thread_id = streams_state[id]
+            if not status:
+                logging.info(f"Status cambiato a False per {id}. Fermiamo il thread.")
+                stop_event.set()  # Fermiamo il thread
+                del streams_state[id]
+            # Se il flusso è attivo (True) e non abbiamo un thread in esecuzione, avviamo il thread
+            elif status and old_status != status:
+                logging.info(f"Status cambiato a True per {id}, avviamo il thread di analisi.")
+                stop_event.clear()
+                t = threading.Thread(target=analizza_e_invia, args=(data['url'], id, 0, stop_event), daemon=True)
+                t.start()
+                streams_state[id] = (status, stop_event, t.ident)
         
+        # Se il flusso è attivo e non è mai stato visto prima
+        elif status:
+            logging.info(f"Nuovo flusso {id} attivo, avviamo il thread di analisi.")
+            stop_event = threading.Event()
+            t = threading.Thread(target=analizza_e_invia, args=(data['url'], id, 0, stop_event), daemon=True)
+            t.start()
+            streams_state[id] = (status, stop_event, t.ident)
+
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -136,9 +161,10 @@ def ricevi_dati():
 # Avvio del server e analisi
 if __name__ == "__main__":  
     try:
-        threading.Thread(target=verifica_periodicamente, daemon=True).start()
+        threading.Thread(target=verifica_periodicamente, daemon=True).start()  # Verifica i flussi ogni 5 minuti
 
         porta = 3002
+
         logging.info(f"Server Flask avviato sulla porta {porta}. Premere Ctrl+C per uscire.")
         app.run(port=porta)
     except KeyboardInterrupt:

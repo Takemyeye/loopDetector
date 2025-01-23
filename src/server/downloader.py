@@ -13,7 +13,7 @@ def scarica_segmento_audio(url, output_file):
         content_br = response.headers.get('icy-br', '')
         segment_size = int(content_br) / 8 * 20 * 1000
         file_extension = get_audio_extension(content_type)
-        
+            
         # Cambiamo il nome del file per usare l'estensione corretta
         output_file_with_extension = f"{os.path.splitext(output_file)[0]}{file_extension}"
 
